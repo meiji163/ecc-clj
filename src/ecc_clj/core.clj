@@ -1,14 +1,19 @@
 (ns ecc-clj.core
   (:require [ecc-clj.poly :as p]))
 
+(def GF255
+  "construct GF(255) as GF2[x]/<x^8+x^7+x^2+x+1>"
+  (let [GF2-poly (p/parse-bin "110000111")]
+    (p/char2-field 2 GF2-poly)))
+
 (def GF16
   "construct GF(16) as GF2[x]/<x^4+x+1>"
-  (let [GF2-poly (parse-bin "10011")]
-   (p/char2-field 2 GF2-poly)))
+  (let [GF2-poly (p/parse-bin "10011")]
+    (p/char2-field 2 GF2-poly)))
 
 (def GF8
   "construct GF(8) as GF2[x]/<x^3+x+1>"
-  (let [GF2-poly (parse-bin "1011")]
+  (let [GF2-poly (p/parse-bin "1011")]
     (p/char2-field 2 GF2-poly)))
 
 (defn encode
@@ -54,7 +59,7 @@
   The polynomials are encoded as integers"
   (let [errors (single-errors 7 8)
         rems (map #(p/mod % RS-7-5 GF8) errors)
-        to-int #(digits-to-int % 8)]
+        to-int #(p/digits-to-int % 8)]
     (zipmap
      (map to-int rems)
      (map to-int errors))))
@@ -73,7 +78,7 @@
                 (single-errors 7 8)
                 (double-errors 7 8))
         rems (map #(p/mod % RS-7-3 GF8) errors)
-        to-int #(digits-to-int % 8)]
+        to-int #(p/digits-to-int % 8)]
     (zipmap
      (map to-int rems)
      (map to-int errors))))
@@ -87,7 +92,7 @@
         extract-data (fn [v] (subvec v deg))
 
         rem (p/mod data gen-poly GF8)
-        rem-int (digits-to-int rem 8)
+        rem-int (p/digits-to-int rem 8)
         error (decoding-tbl rem-int)]
     (cond
       ;; no errors
@@ -96,7 +101,7 @@
       (nil? error) nil
       :else
       ;; correctable error; subtract it
-      (let [err-poly (base-n-digits error 8)]
+      (let [err-poly (p/base-n-digits error 8)]
         (extract-data
          (p/- data err-poly GF8))))
     ))
@@ -123,6 +128,17 @@
   (p/* [1 1 0 0 1] [1 1 1 1 1] p/binary-field))
 ;; => [1 0 0 0 1 0 1 1 1]
 
+(def RS-255-223
+  "(255,223) Reed-Solomon code over GF255 corrects 16 errors.
+  g(x)=(x-w)(x-w^2)...(x-w^32)
+  This is the standard recommended by CCSDS."
+  (let [mul (:* GF255)
+        prim 2
+        roots (take 32
+                    (iterate #(mul prim %) prim))]
+    (reduce
+     (fn [p1 p2] (p/* p1 p2 GF255))
+     (for [r roots] [r 1]))))
 
 (comment
   (-> [5 2 3 1 6]
@@ -136,4 +152,9 @@
 
   (encode [0 1 0 1 0 1 0] BCH-15-7 p/binary-field)
   ;; => [0 1 0 1 1 0 0 0 0 1 0 1 0 1 0]
+
+  ;; check 2 is a primitive element
+  (let [mul (:* GF255)]
+    (= (range 1 256)
+       (sort (take 255 (iterate #(mul 2 %) 2)))))
   )

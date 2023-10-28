@@ -54,15 +54,17 @@
 
 (defn digits-to-int
   [digs base]
-  (loop [v digs
-         b 1
-         acc 0]
-    (if (empty? v)
-      acc
-      (recur (rest v)
-             (* base b)
-             (+ acc (* b (first v)))))
-    ))
+  (let [mul clojure.core/*
+        add clojure.core/+]
+   (loop [v digs
+          b 1
+          acc 0]
+     (if (empty? v)
+       acc
+       (recur (rest v)
+              (mul base b)
+              (add acc (mul b (first v)))))
+     )))
 
 (defn bin-string [b]
   (Integer/toString b 2))
@@ -73,13 +75,15 @@
 (defn mod-invs
   "calculate inverses of 1..p-1 in Z/pZ where p is prime"
   [p]
-  (let [cands (set (range 2 p))]
+  (let [mod clojure.core/mod
+        mul clojure.core/*
+        cands (set (range 2 p))]
     (loop [n 2
            c cands
            invs {1 1}]
       (if (= n p) invs
           (let [n-inv (first
-                       (filter #(= 1 (mod (* n %) p))
+                       (filter #(= 1 (mod (mul n %) p))
                                cands))]
             (recur
              (inc n)
@@ -88,13 +92,17 @@
     ))
 
 (defn prime-field [p]
-  (let [inv (mod-invs p)]
+  (let [mod clojure.core/mod
+        mul clojure.core/*
+        add clojure.core/+
+        sub clojure.core/-
+        inv (mod-invs p)]
     {:unit 1
      :zero 0
-     :+ (fn [x y] (mod (+ x y) p))
-     :- (fn [x y] (mod (- x y) p))
-     :* (fn [x y] (mod (* x y) p))
-     :/ (fn [x y] (mod (* x (inv y)) p))
+     :+ (fn [x y] (mod (add x y) p))
+     :- (fn [x y] (mod (sub x y) p))
+     :* (fn [x y] (mod (mul x y) p))
+     :/ (fn [x y] (mod (mul x (inv y)) p))
      :inv inv}))
 
 (defn scale
