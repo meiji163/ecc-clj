@@ -161,7 +161,6 @@
   ([p1 p2 & [field]]
    (let [field (or field default-field)
          {plus :+
-          minus :-
           mul :*
           div :/
           zero :zero} field
@@ -184,12 +183,44 @@
                  (recur (- rem q field)))))
        ))))
 
+(defn quot-rem
+  "Divide p1 by p2 and return the quotient
+  and remainder in a pair"
+  [p1 p2 & [field]]
+  (let [field (or field default-field)
+        {plus :+
+         minus :-
+         mul :*
+         div :/
+         zero :zero} field
+
+        deg1 (dec (count p1))
+        deg2 (dec (count p2))]
+    (loop [quot []
+           rem p1]
+      (let [deg (dec (count rem))
+            diff (clojure.core/- deg deg2)]
+        (cond (or (< diff 0)
+                  (< deg deg2)) [(strip quot) (strip rem)]
+
+              (= zero (last rem)) (recur quot (subvec rem 0 deg))
+              :else
+              (let [factor
+                    (scale (monomial diff)
+                           (div (last rem) (last p2))
+                           field)
+                    q (* p2 factor field)]
+                (recur (+ quot factor field)
+                       (- rem q field)))
+              )))
+    ))
+
 (defn ring
   "construct polynomial ring F[x]"
   [field]
   {:unit [(:unit field)]
    :zero [(:zero field)]
-   :+ (fn [p1 p2] (+ p1 p2 field))
+   :+ (fn ([p1 p2] + p1 p2 field))
    :- (fn [p1 p2] (- p1 p2 field))
    :* (fn [p1 p2] (* p1 p2 field))})
 

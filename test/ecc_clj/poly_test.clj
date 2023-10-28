@@ -14,12 +14,24 @@
       (is (= (p/mod [0 1 0 0 1] [1 1 0 1] f) [0 0 1]))
       )))
 
+(deftest poly-quot-test
+  (testing "divide binary polynomials"
+    (let [F p/binary-field
+          p1 [0 1 0 0 1]
+          p2 [1 1 0 1]
+          prod (p/* p1 p2 F)
+          [quot1 rem1] (p/quot-rem prod p2 p/binary-field)
+          [quot2 rem2] (p/quot-rem prod p1 p/binary-field)]
+      (is (and (= p1 quot1) (empty? rem1)))
+      (is (and (= p2 quot2) (empty? rem2)))
+      )))
+
 (deftest binary-mod-test
   (testing "bit-polynomial remainder"
     (is (= 4
-         (p/binmod
-          (c/parse-bin "11010011101100000")
-          (c/parse-bin "1011")))))
+           (p/binmod
+            (c/parse-bin "11010011101100000")
+            (c/parse-bin "1011")))))
 
   (testing "binary polynomial mod functions agree"
     (let [p1 [0 1 0 0 1]
