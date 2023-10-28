@@ -17,6 +17,86 @@
    :* bit-and
    :/ bit-and})
 
+(defn bits-to-vec
+  "convert int bits into vec.
+  The vector is in little-endian order"
+  [b]
+  (loop [n b
+         bits '()]
+    (if (= 0 n)
+      (vec (reverse bits))
+      (recur (bit-shift-right n 1)
+             (conj bits (bit-and n 1))))
+    ))
+
+(defn vec-to-bits
+  "convert binary vec to int"
+  [v]
+  (let [len (count v)]
+    (loop [i 0
+           acc 0]
+      (if (>= i len) acc
+          (recur (inc i)
+                 (clojure.core/+ acc (bit-shift-left (v i) i))))
+      )))
+
+(defn base-n-digits
+  "like bits-to-vec but with arbitrary base"
+  [n base]
+  (loop [m n
+         digs '()]
+    (if (= 0 m)
+      (vec (reverse digs))
+      (let [q (quot m base)
+            r (rem m base)]
+        (recur q (conj digs r))))
+    ))
+
+(defn digits-to-int
+  [digs base]
+  (loop [v digs
+         b 1
+         acc 0]
+    (if (empty? v)
+      acc
+      (recur (rest v)
+             (* base b)
+             (+ acc (* b (first v)))))
+    ))
+
+(defn bin-string [b]
+  (Integer/toString b 2))
+
+(defn parse-bin [s]
+  (Integer/parseInt s 2))
+
+(defn mod-invs
+  "calculate inverses of 1..p-1 in Z/pZ where p is prime"
+  [p]
+  (let [cands (set (range 2 p))]
+    (loop [n 2
+           c cands
+           invs {1 1}]
+      (if (= n p) invs
+          (let [n-inv (first
+                       (filter #(= 1 (mod (* n %) p))
+                               cands))]
+            (recur
+             (inc n)
+             (disj c n-inv)
+             (assoc invs n n-inv)))))
+    ))
+
+(defn prime-field [p]
+  (let [inv (mod-invs p)]
+    {:unit 1
+     :zero 0
+     :+ (fn [x y] (mod (+ x y) p))
+     :- (fn [x y] (mod (- x y) p))
+     :* (fn [x y] (mod (* x y) p))
+     :/ (fn [x y] (mod (* x (inv y)) p))
+     :inv inv}))
+
 (defn scale
   "multiply polynomial by a scalar"
   [p s & [field]]
@@ -188,18 +268,30 @@
      ;; 1 is its own inverse
      1 1)))
 
+(defn char2-times-table
+  [poly]
+  (let [n-elts (bit-shift-left 1 (bindeg poly))
+        pairs (for [i (range n-elts)
+                    j (range n-elts)]
+                [i j])]
+    (zipmap
+     pairs
+     (map (fn [[i j]]
+            (binmod (bin* i j) poly))
+          pairs))
+    ))
+
 (defn char2-field
   "construct field Z/2Z[x]/<p(x)>
   given a primitive element and generating polynomial"
   [prim poly]
   (let [invs (char2-invs prim poly)
-        modp #(binmod % poly)]
+        times-table (char2-times-table poly)]
     {:unit 1
      :zero 0
      :inv invs
      :+ bit-xor
      :- bit-xor
-     :* (fn [p1 p2]
-          (modp (bin* p1 p2)))
-     :/ (fn [p1 p2]
-          (modp (bin* p1 (invs p2))))}))
+     :* (fn [p1 p2] (times-table [p1 p2]))
+     :/ (fn [p1 p2] (times-table [p1 (invs p2)]))}
+    ))

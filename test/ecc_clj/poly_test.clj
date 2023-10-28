@@ -24,10 +24,10 @@
   (testing "binary polynomial mod functions agree"
     (let [p1 [0 1 0 0 1]
           p2 [1 1 0 1]
-          p1-bits (c/vec-to-bits p1)
-          p2-bits (c/vec-to-bits p2)]
+          p1-bits (p/vec-to-bits p1)
+          p2-bits (p/vec-to-bits p2)]
       (is (= (p/mod p1 p2 p/binary-field)
-             (c/bits-to-vec
+             (p/bits-to-vec
               (p/binmod p1-bits p2-bits))
              [0 0 1]))
       )))
@@ -35,7 +35,7 @@
 (deftest char2-invs-test
   (testing "char2 field inverses"
     (let [prim 2
-          poly (c/parse-bin "10011")
+          poly (p/parse-bin "10011")
           invs (p/char2-invs prim poly)]
       (is (every? #(= 1 %)
         (map
