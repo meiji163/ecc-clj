@@ -72,7 +72,7 @@
           (let [aij (aget mat i j)
                 ai (aget mat i)]
             (map-row! #(div % aij) ai))
-
+          ;;
           (recur (inc i) (inc j)))
         ))
     ))
@@ -80,40 +80,40 @@
 (defn mat-inv [mat field]
   (let [rows (count mat)
         cols (count (first mat))]
-    (if (not= rows cols) (throw (new Exception "matrix is not square"))
+    (if (not= rows cols)
+      (throw (new Exception "matrix is not square"))
 
-        ;; extend matrix with the identity matrix
-        (let [exmat (make-array Integer/TYPE rows (* 2 cols))]
-          (do
-            (doall (for [i (range rows)
-                         j (range cols)]
-                     (aset exmat i j
-                           (aget mat i j))))
-            (doall (for [i (range rows)]
-                     (aset exmat i (+ i rows)
-                           (int 1))))
+      ;; extend matrix with the identity matrix
+      (let [exmat (make-array Integer/TYPE rows (* 2 cols))]
+        (do
+          (doall (for [i (range rows)
+                       j (range cols)]
+                   (aset exmat i j
+                         (aget mat i j))))
+          (doall (for [i (range rows)]
+                   (aset exmat i (+ i rows)
+                         (int 1))))
 
-            ;; try gaussian elimination
-            (let [elim (gauss-elimination exmat field)
-                  ;; it succeeded if the left half equals identity matrix
-                  success? (every? (fn [[i j]]
-                                     (= (if (= i j) (int 1) (int 0))
-                                        (aget elim i j)))
-                                   (for [i (range rows)
-                                         j (range cols)]
-                                     [i j]))]
+          ;; try gaussian elimination
+          (let [elim (gauss-elimination exmat field)
+                ;; it succeeded if the left half equals identity matrix
+                success? (every? (fn [[i j]]
+                                   (= (if (= i j) (int 1) (int 0))
+                                      (aget elim i j)))
+                                 (for [i (range rows)
+                                       j (range cols)]
+                                   [i j]))]
 
-              (if (not success?) (throw not-invertible)
+            (if (not success?) nil
 
-                  ;; extract the inverse matrix from right half
-                  (let [inv (make-array Integer/TYPE rows rows)]
-                    (doall (for [i (range rows)
-                                 j (range cols)]
-                             (aset inv i j
-                                   (aget elim i (+ j rows)))))
-                    inv))
-              ))
-          ))
+                ;; extract the inverse matrix from right half
+                (let [inv (make-array Integer/TYPE rows rows)]
+                  (doall (for [i (range rows)
+                               j (range cols)]
+                           (aset inv i j
+                                 (aget elim i (+ j rows)))))
+                  inv))))
+        ))
     ))
 
 (defn dot [v1 v2 field]

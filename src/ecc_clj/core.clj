@@ -166,13 +166,12 @@
     mat))
 
 (defn locate-n-errors
-  "locate error positions for n errors
-  with a Reed-Solomon or BCH code"
-  [poly n field]
+  "locate error positions for exactly n errors"
+  [syns poly n field]
   (let [prim (:primitive field)
         mul (:* field)
         n-elts (count (:inv field))
-        syns (syndromes poly (* 2 n) field)
+        syns (vec (take (* 2 n) syns))
         syn-mat (syndrome-mat syns)
         syn-mat-inv (try
                       (la/mat-inv syn-mat field)
@@ -187,15 +186,32 @@
               eval-roots (vec (map
                                #(p/evaluate locator % field)
                                roots))
-
-              ;; zeros have the form w^k
-              ;; this finds each exponent k
+              ;; zeros have the form w^k. this finds each exponent k
               locator-zeros-expt (filter #(= 0 (eval-roots %))
                                          (range n-elts))]
           ;; the locator polynomial zeros are inverses
           ;; of the error locations
-          (map #(- n-elts %) locator-zeros-expt)))
+          (map #(mod (- n-elts %) n-elts)
+               locator-zeros-expt)))
     ))
+
+(defn locate-errors
+  "locate error positions for <= n errors"
+  [poly n field]
+  (let [syns (syndromes poly (* 2 n) field)]
+    (loop [t n]
+      (if (< n 1) nil
+          (let [err-idxs (locate-n-errors syns poly t field)]
+            (if (nil? err-idxs)
+              (recur (dec t))
+              err-idxs)))
+      )))
+
+(defn error-sizes
+  [idxs field]
+  (let [t (count idxs)
+        prim (:primitive field)]
+    "TODO"))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; examples and junk
@@ -220,22 +236,25 @@
 
 (comment
   (def encoded-poly
-    (let [message (str
-                   "Hello world! This is meiji163 transmitting from Neptune. "
-                   "It's cold here, Please send hot chocolate. Thanks. "
-                   "Now that I think of it, ramen would be good too if you have some.")
+    (let [message
+          (str
+           "Hello world! This is meiji163 transmitting from Neptune. "
+           "It's cold here, Please send hot chocolate. Thanks. "
+           "Now that I think of it, ramen would be good too if you have some.")
+
           data (vec (map int message))
           padded (p/shift-right
                   data
                   (- 223 (count data)))]
       (encode padded RS-255-223 GF255)))
 
-  (def decode-me
-    (p/+ [0 42 1 0 0 163 0 0 66] encoded-poly GF255))
+  (let [err [0 42 1 0 0 163 0 0 66 0 0 0 0 101 100]
+        decode-me (p/+ encoded-poly err GF255)]
+    (locate-errors decode-me 8 GF255))
+  ;; => (14 13 8 5 2 1)
 
-  (locate-n-errors decode-me 5 GF255)
-  ;; => nil
-
-  (locate-n-errors decode-me 4 GF255)
-  ;; => (8 5 2 1)
+  (let [err [1 42 1]
+        decode-me (p/+ encoded-poly err GF255)]
+    (locate-errors decode-me 6 GF255))
+  ;; => (0 2 1)
   )
