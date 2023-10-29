@@ -1,6 +1,5 @@
 (ns ecc-clj.poly-test
   (:require [ecc-clj.poly :as p]
-            [ecc-clj.core :as c]
             [clojure.test :refer :all]))
 
 (deftest poly-mod-test
@@ -30,8 +29,8 @@
   (testing "bit-polynomial remainder"
     (is (= 4
            (p/binmod
-            (c/parse-bin "11010011101100000")
-            (c/parse-bin "1011")))))
+            (p/parse-bin "11010011101100000")
+            (p/parse-bin "1011")))))
 
   (testing "binary polynomial mod functions agree"
     (let [p1 [0 1 0 0 1]
@@ -54,6 +53,14 @@
          (fn [[a b]]
            (p/binmod (p/bin* a b) poly))
          (seq invs)))))
+    ))
+
+(deftest eval-test
+  (testing "eval integer polynomial"
+    (let [poly [3 0 2 1]]
+      (is (= 3 (p/evaluate poly 0)))
+      (is (= 6 (p/evaluate poly 1)))
+      (is (= 19 (p/evaluate poly 2))))
     ))
 
 (deftest poly-sub-test

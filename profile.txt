@@ -1,0 +1,13 @@
+;; (encode msg RS-255-223 GF255)
+pId                           nCalls        Min      50% ≤      90% ≤      95% ≤      99% ≤        Max       Mean   MAD      Clock  Total
+
+:ecc-clj.core/defn_encode         10      426ms      428ms      451ms      455ms      455ms      455ms      433ms   ±2%      4.33s   100%
+:ecc-clj.poly/defn_mod            10      426ms      428ms      451ms      455ms      455ms      455ms      433ms   ±2%      4.33s   100%
+:ecc-clj.poly/defn_mod_4          10      426ms      428ms      451ms      455ms      455ms      455ms      433ms   ±2%      4.33s   100%
+:ecc-clj.poly/defn_*           2,230       62μs        2ms        4ms        4ms        4ms       29ms        2ms  ±54%      4.20s    97%
+:ecc-clj.poly/defn_scale       2,230      668ns       26μs       47μs       50μs       54μs      122μs       27μs  ±49%       59ms     1%
+:ecc-clj.poly/defn_-           2,230        3μs       12μs       20μs       21μs       28μs      274μs       13μs  ±40%       28ms     1%
+:ecc-clj.poly/defn_+              10       69μs       71μs       74μs      348μs      348μs      348μs       99μs  ±51%      987μs     0%
+
+Accounted                                                                                                                   17.26s   399%
+Clock                                                                                                                        4.33s   100%

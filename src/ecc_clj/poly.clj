@@ -105,7 +105,7 @@
      :/ (fn [x y] (mod (mul x (inv y)) p))
      :inv inv}))
 
-(defn scale
+(defnp scale
   "multiply polynomial by a scalar"
   [p s & [field]]
   (let [field (or field default-field)
@@ -116,7 +116,7 @@
   (let [v (vec (repeat n 0))]
     (assoc v n 1)))
 
-(defn + [p1 p2 & [field]]
+(defnp + [p1 p2 & [field]]
   (let [field (or field default-field)
         plus (:+ field)
         l1 (count p1)
@@ -125,7 +125,7 @@
      (for [i (range (max l1 l2))]
        (plus (nth p1 i 0) (nth p2 i 0))))))
 
-(defn - [p1 p2 & [field]]
+(defnp - [p1 p2 & [field]]
   (let [field (or field default-field)
         minus (:- field)
         l1 (count p1)
@@ -142,7 +142,7 @@
     (recur (subvec poly 0
                    (dec (count poly))))))
 
-(defn *
+(defnp *
   "multiply two polynomials over a field"
   [p1 p2 & [field]]
   (let [field (or field default-field)
@@ -164,7 +164,7 @@
     (vec
      (map conv-j (range deg)))))
 
-(defn mod
+(defnp mod
   "remainder when p1 is divided by p2"
   ([p1 p2 & [field]]
    (let [field (or field default-field)
@@ -180,7 +180,7 @@
              diff (clojure.core/- deg deg2)]
          (cond (or (< diff 0)
                    (< deg deg2)) (strip rem)
-               (= zero (last rem)) (recur (subvec rem 0 deg))
+               (= zero (last rem)) (recur (strip rem))
                :else
                ;; do long division step
                (let [factor
@@ -240,6 +240,17 @@
         zero (:zero field)]
     (vec
      (concat (repeat n zero) poly))))
+
+(defn evaluate
+  "evaluate polynomial at value"
+  [poly x & [field]]
+  (let [field (or field default-field)
+        {zero :zero
+         plus :+
+         mul :*} field]
+    (reduce
+     (fn [acc coeff] (plus coeff (mul acc x)))
+     (reverse poly))))
 
 
 ;; Ops for Z/2Z[x]
@@ -323,7 +334,7 @@
 (defn char2-field
   "construct field Z/2Z[x]/<p(x)>
   given a primitive element and generating polynomial"
-  [prim poly]
+  [prim poly & [opts]]
   (let [invs (char2-invs prim poly)
         times-table (char2-times-table poly)]
     {:unit 1

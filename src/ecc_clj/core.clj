@@ -1,18 +1,20 @@
 (ns ecc-clj.core
-  (:require [ecc-clj.poly :as p]))
+  (:require [ecc-clj.poly :as p]
+            [ecc-clj.linalg :as la]
+            [taoensso.tufte :as tufte :refer [p profiled profile]]))
 
 (def GF255
-  "construct GF(255) as GF2[x]/<x^8+x^7+x^2+x+1>"
+  "GF(255) constructed as GF2[x]/<x^8+x^7+x^2+x+1>"
   (let [GF2-poly (p/parse-bin "110000111")]
     (p/char2-field 2 GF2-poly)))
 
 (def GF16
-  "construct GF(16) as GF2[x]/<x^4+x+1>"
+  "GF(16) constructed as GF2[x]/<x^4+x+1>"
   (let [GF2-poly (p/parse-bin "10011")]
     (p/char2-field 2 GF2-poly)))
 
 (def GF8
-  "construct GF(8) as GF2[x]/<x^3+x+1>"
+  "GF(8) constructed as GF2[x]/<x^3+x+1>"
   (let [GF2-poly (p/parse-bin "1011")]
     (p/char2-field 2 GF2-poly)))
 
@@ -140,6 +142,30 @@
      (fn [p1 p2] (p/* p1 p2 GF255))
      (for [r roots] [r 1]))))
 
+(def encoded-poly
+ (let [message (str
+                "Hello world! This is meiji163 transmitting from Neptune. "
+                "It's cold here, Please send hot chocolate. Thanks. "
+                "Now that I think of it, ramen would be good too if you have some.")
+       data (vec (map int message))
+       padded (p/shift-right
+               data
+               (- 223 (count data)))]
+   (encode padded RS-255-223 GF255)))
+
+(def decode-me
+  (p/+ [42 1] encoded-poly))
+
+(syndromes decode-me 2 32 GF255)
+
+(defn syndromes
+  [poly prim n & [field]]
+  (let [field (or field p/default-field)
+        mul (:* field)
+        roots (take n (iterate #(mul prim %) prim))]
+    (vec (for [r roots]
+       (p/evaluate poly r field)))))
+
 (comment
   (-> [5 2 3 1 6]
       (encode RS-7-5 GF8)
@@ -156,5 +182,4 @@
   ;; check 2 is a primitive element
   (let [mul (:* GF255)]
     (= (range 1 256)
-       (sort (take 255 (iterate #(mul 2 %) 2)))))
-  )
+       (sort (take 255 (iterate #(mul 2 %) 2))))))
