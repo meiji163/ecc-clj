@@ -1,6 +1,8 @@
 (ns ecc-clj.linalg
   (:require [ecc-clj.poly :as p]))
 
+(def not-invertible (new Exception "matrix is not invertible"))
+
 (defn map-row!
   "my functional programming sin"
   [f row]
@@ -42,9 +44,11 @@
 
         (= zero (aget mat i j)) ;; find a pivot row and swap
         (let [swap-ix (first (filter
-                              #(not= zero (aget % j))
-                              (range cols)))]
-          (swap-rows! arr swap-ix i)
+                              #(not= zero (aget mat % j))
+                              (range rows)))]
+          (when (nil? swap-ix) (throw not-invertible))
+
+          (swap-rows! mat swap-ix i)
           (recur i j))
 
         :else
@@ -99,7 +103,7 @@
                                          j (range cols)]
                                      [i j]))]
 
-              (if (not success?) (throw (new Exception "matrix is not invertible"))
+              (if (not success?) (throw not-invertible)
 
                   ;; extract the inverse matrix from right half
                   (let [inv (make-array Integer/TYPE rows rows)]
@@ -111,6 +115,23 @@
               ))
           ))
     ))
+
+(defn dot [v1 v2 field]
+  (let [{plus :+
+         mul :*} field]
+    (areduce v1 i res 0
+             (plus res
+                   (mul (aget v1 i)
+                        (aget v2 i))))
+    ))
+
+(defn mat-vec
+  "multiply matrix by vector.
+  arr is an array representing a column vector."
+  [mat arr field]
+  (let [n (count arr)]
+    (vec (for [i (range n)]
+       (dot (aget mat i) arr field)))))
 
 (defn matrix* [m1 m2 field]
   (let [{plus :+

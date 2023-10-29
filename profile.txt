@@ -1,4 +1,4 @@
-;; (encode msg RS-255-223 GF255)
+;; profile (encode msg RS-255-223 GF255)
 pId                           nCalls        Min      50% ≤      90% ≤      95% ≤      99% ≤        Max       Mean   MAD      Clock  Total
 
 :ecc-clj.core/defn_encode         10      426ms      428ms      451ms      455ms      455ms      455ms      433ms   ±2%      4.33s   100%

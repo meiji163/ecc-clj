@@ -339,6 +339,7 @@
         times-table (char2-times-table poly)]
     {:unit 1
      :zero 0
+     :primitive prim
      :inv invs
      :+ bit-xor
      :- bit-xor
