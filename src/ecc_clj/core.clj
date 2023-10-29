@@ -5,7 +5,7 @@
 
 (def char2-primitive
   "The polynomial fields are constructed so that
-  the polynomial x represented by 2 is primitive."
+  the polynomial x represented by 0b10 is primitive."
   2)
 
 (def GF255
@@ -25,7 +25,7 @@
 
 (defn encode
   "systematic encoding: the data polynomial is the
-  highest k coefficients and the (n-k) lower are checks"
+  highest k coefficients and (n-k) lower are check symbols"
   [data-poly gen-poly & [field]]
   (let [field (or field p/default-field)
         shifted (p/shift-right
@@ -59,6 +59,13 @@
   g(x) = (x-w)(x-w^2), where w=2 "
   (p/* [2 1] [4 1] GF8))
 
+(def RS-7-3
+  "(7,3) Reed-Solomon code over GF(8)
+  with generating polynomial
+  g(x) = (x-w^4)(x-w^5)(x-w^6)(x-w^7), where w=2"
+  (reduce
+   (fn [p1 p2] (p/* p1 p2 GF8))
+   [[7 1] [3 1] [6 1] [1 1]]))
 
 ;;; Small codes can be decoded with a lookup table
 ;;; of error-polynomial remainders
@@ -71,15 +78,6 @@
     (zipmap
      (map to-int rems)
      (map to-int errors))))
-
-(def RS-7-3
-  "(7,3) Reed-Solomon code over GF(8)
-  with generating polynomial
-  g(x) = (x-w^4)(x-w^5)(x-w^6)(x-w^7), where w=2"
-  (reduce
-   (fn [p1 p2] (p/* p1 p2 GF8))
-   [[7 1] [3 1] [6 1] [1 1]]))
-;; => [7 0 5 3 1]
 
 (def RS-7-3-table
   (let [errors (concat
@@ -182,38 +180,73 @@
         (let [err-vec (la/mat-vec syn-mat-inv syn-vec field)
               locator (reverse (conj err-vec 1))
 
-              roots (take n-elts (iterate #(mul % prim) 1))
+              roots (:exp field)
               eval-roots (vec (map
                                #(p/evaluate locator % field)
                                roots))
               ;; zeros have the form w^k. this finds each exponent k
-              locator-zeros-expt (filter #(= 0 (eval-roots %))
+              locator-zeros-log (filter #(= 0 (eval-roots %))
                                          (range n-elts))]
-          ;; the locator polynomial zeros are inverses
-          ;; of the error locations
-          (map #(mod (- n-elts %) n-elts)
-               locator-zeros-expt)))
+          (vec (sort
+                 ;; the locator polynomial zeros are inverses
+                 ;; of the error locations
+                 (map #(mod (- n-elts %) n-elts)
+                      locator-zeros-log)))))
+    ))
+
+(defn error-sizes
+  [syns idxs field]
+  (let [t (count idxs)
+        roots (:exp field)
+        n (count roots)
+        mat (make-array Integer/TYPE t t)]
+    (do
+      ;; solve linear equation to find error sizes from syndromes
+      (doall (for [i (range t)
+                   j (range t)]
+               (aset mat i j
+                     (int
+                      (roots
+                       (mod (* (inc i) (nth idxs j))
+                            n))))
+               ))
+      (let [inv (try
+                  (la/mat-inv mat field)
+                  (catch Exception e nil))]
+        (if (nil? inv) nil
+            (let [syn-vec (into-array Integer/TYPE (take t syns))
+                  size-vec (la/mat-vec inv syn-vec field)]
+              size-vec)
+            )))
     ))
 
 (defn locate-errors
   "locate error positions for <= n errors"
-  [poly n field]
-  (let [syns (syndromes poly (* 2 n) field)]
-    (loop [t n]
-      (if (< n 1) nil
-          (let [err-idxs (locate-n-errors syns poly t field)]
-            (if (nil? err-idxs)
-              (recur (dec t))
-              err-idxs)))
-      )))
+  [syns poly nerrs field]
+  (loop [t nerrs]
+    (if (< nerrs 1) nil
+        (let [err-idxs (locate-n-errors syns poly t field)]
+          (if (nil? err-idxs)
+            (recur (dec t))
+            err-idxs)))
+    ))
 
-(defn error-sizes
-  [idxs field]
-  (let [t (count idxs)
-        prim (:primitive field)]
-    "TODO"))
+(defn decode
+  "Peterson decoding algorithm for BCH or RS code"
+  [poly nerrs field]
+  (let [syns (syndromes poly (* 2 nerrs) field)]
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    (cond (every? zero? syns) poly      ; no errors
+          :else
+          (let [err-idxs (locate-errors syns poly nerrs field)]
+            (cond (or (nil? err-idxs) (empty? err-idxs))
+                  nil
+                  :else
+                  {:locations err-idxs
+                   :sizes (error-sizes syns err-idxs field)})))
+    ))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; examples and junk
 
 (comment
@@ -225,6 +258,8 @@
   ;; => [0 2 2 4 1 6 3]
   (RS-7-3-decode [1 2 2 4 1 7 3])
   ;; => [1 6 3]
+  (RS-7-3-decode [0 2 2 4 6 6 6])
+  ;; => [1 6 3]
 
   (encode [0 1 0 1 0 1 0] BCH-15-7 p/binary-field)
   ;; => [0 1 0 1 1 0 0 0 0 1 0 1 0 1 0]
@@ -235,7 +270,7 @@
        (sort (take 255 (iterate #(mul 2 %) 2))))))
 
 (comment
-  (def encoded-poly
+  (def my-encoded-msg
     (let [message
           (str
            "Hello world! This is meiji163 transmitting from Neptune. "
@@ -248,13 +283,17 @@
                   (- 223 (count data)))]
       (encode padded RS-255-223 GF255)))
 
-  (let [err [0 42 1 0 0 163 0 0 66 0 0 0 0 101 100]
-        decode-me (p/+ encoded-poly err GF255)]
-    (locate-errors decode-me 8 GF255))
-  ;; => (14 13 8 5 2 1)
-
   (let [err [1 42 1]
-        decode-me (p/+ encoded-poly err GF255)]
-    (locate-errors decode-me 6 GF255))
-  ;; => (0 2 1)
+        max-errs 5
+        decode-me (p/+ my-encoded-msg err GF255)
+        syns (syndromes decode-me (* 2 max-errs) GF255)]
+    (locate-errors syns decode-me max-errs GF255) ;; => [0 1 2]
+    (decode decode-me max-errs GF255) ;; => {:locations [0 1 2], :sizes [1 42 1]}
+    )
+
+  (let [err [0 42 1 0 0 163 0 0 66 0 0 0 0 0 101 100]
+        max-errs 8
+        decode-me (p/+ my-encoded-msg err GF255)]
+    (decode decode-me max-errs GF255))
+  ;; => {:locations [1 2 5 8 14 15], :sizes [42 1 163 66 101 100]}
   )

@@ -105,7 +105,7 @@
      :/ (fn [x y] (mod (mul x (inv y)) p))
      :inv inv}))
 
-(defnp scale
+(defn scale
   "multiply polynomial by a scalar"
   [p s & [field]]
   (let [field (or field default-field)
@@ -116,7 +116,7 @@
   (let [v (vec (repeat n 0))]
     (assoc v n 1)))
 
-(defnp + [p1 p2 & [field]]
+(defn + [p1 p2 & [field]]
   (let [field (or field default-field)
         plus (:+ field)
         l1 (count p1)
@@ -125,7 +125,7 @@
      (for [i (range (max l1 l2))]
        (plus (nth p1 i 0) (nth p2 i 0))))))
 
-(defnp - [p1 p2 & [field]]
+(defn - [p1 p2 & [field]]
   (let [field (or field default-field)
         minus (:- field)
         l1 (count p1)
@@ -142,7 +142,7 @@
     (recur (subvec poly 0
                    (dec (count poly))))))
 
-(defnp *
+(defn *
   "multiply two polynomials over a field"
   [p1 p2 & [field]]
   (let [field (or field default-field)
@@ -164,7 +164,7 @@
     (vec
      (map conv-j (range deg)))))
 
-(defnp mod
+(defn mod
   "remainder when p1 is divided by p2"
   ([p1 p2 & [field]]
    (let [field (or field default-field)
@@ -336,11 +336,16 @@
   given a primitive element and generating polynomial"
   [prim poly & [opts]]
   (let [invs (char2-invs prim poly)
+        n-elts (bit-shift-left 1 (bindeg poly))
+        exp (vec (take n-elts
+                   (iterate #(binmod (bin* % prim) poly)
+                            1)))
         times-table (char2-times-table poly)]
     {:unit 1
      :zero 0
      :primitive prim
      :inv invs
+     :exp exp
      :+ bit-xor
      :- bit-xor
      :* (fn [p1 p2] (times-table [p1 p2]))
