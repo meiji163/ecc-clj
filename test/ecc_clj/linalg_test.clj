@@ -3,8 +3,6 @@
             [ecc-clj.core :as c]
             [clojure.test :refer :all]))
 
-
-
 (deftest mat-inv-test
   (testing "invert 2x2 GF8 matrix"
     (let [mat (into-array

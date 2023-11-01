@@ -3,6 +3,14 @@
             [ecc-clj.linalg :as la]
             [taoensso.tufte :as tufte :refer [p profiled profile]]))
 
+(def GF2
+  {:unit 1
+   :zero 0
+   :+ bit-xor
+   :- bit-xor
+   :* bit-and
+   :/ bit-and})
+
 (def char2-primitive
   "The polynomial fields are constructed so that
   the polynomial x represented by 0b10 is primitive."
@@ -126,19 +134,25 @@
    [[2 1] [4 1] [8 1] [3 1]]))
 
 (def BCH-15-7
-  "(15,7) BCH code over GF2 corrects two errors.
+  "(15,7) BCH binary code 2 errors.
   g(x) = (x^4+x+1)(x^4+x^3+x^2+x+1) is constructed so that
   w,w^2,w^3,w^4 are zeroes of g(x) in GF(16)"
-  (p/* [1 1 0 0 1] [1 1 1 1 1] p/binary-field))
+  (p/* [1 1 0 0 1] [1 1 1 1 1] GF2))
+
+(def BCH-15-5
+  "(15,5) BCH binary code corrects 3 errors"
+  (reduce
+   (fn [p1 p2] (p/* p1 p2 GF2))
+   [[1 1 0 0 1] [1 1 1 1 1] [1 1 1]]))
 
 (def RS-255-223
   "(255,223) Reed-Solomon code over GF255 corrects 16 errors.
   g(x)=(x-w)(x-w^2)...(x-w^32)
   This is the standard recommended by CCSDS."
   (let [mul (:* GF255)
+        exp (:exp GF255)
         prim 2
-        roots (take 32
-                    (iterate #(mul prim %) prim))]
+        roots (for [e (range 1 33)] (exp e))]
     (reduce
      (fn [p1 p2] (p/* p1 p2 GF255))
      (for [r roots] [r 1]))))
@@ -147,8 +161,9 @@
   "calculate n syndromes from the data polynomial"
   [poly n field]
   (let [mul (:* field)
+        roots (:exp field)
         prim (:primitive field)
-        roots (take n (iterate #(mul prim %) prim))]
+        roots (take n roots)]
     (vec (for [r roots]
            (p/evaluate poly r field)))))
 
@@ -261,7 +276,7 @@
   (RS-7-3-decode [0 2 2 4 6 6 6])
   ;; => [1 6 3]
 
-  (encode [0 1 0 1 0 1 0] BCH-15-7 p/binary-field)
+  (encode [0 1 0 1 0 1 0] BCH-15-7 GF2)
   ;; => [0 1 0 1 1 0 0 0 0 1 0 1 0 1 0]
 
   ;; check 2 is a primitive element

@@ -1,5 +1,6 @@
 (ns ecc-clj.poly-test
   (:require [ecc-clj.poly :as p]
+            [ecc-clj.core :refer [GF2]]
             [clojure.test :refer :all]))
 
 (deftest poly-mod-test
@@ -9,18 +10,18 @@
     (is (= (p/mod [-4 4 0 5 6] [-1 1 2]) [-3 4]))
     (is (= (p/mod [0 0 0 1] [1 0 1 1]) [-1 0 -1])))
   (testing "mod2 polynomial remainder"
-    (let [f p/binary-field]
+    (let [f GF2]
       (is (= (p/mod [0 1 0 0 1] [1 1 0 1] f) [0 0 1]))
       )))
 
 (deftest poly-quot-test
   (testing "divide binary polynomials"
-    (let [F p/binary-field
+    (let [F GF2
           p1 [0 1 0 0 1]
           p2 [1 1 0 1]
           prod (p/* p1 p2 F)
-          [quot1 rem1] (p/quot-rem prod p2 p/binary-field)
-          [quot2 rem2] (p/quot-rem prod p1 p/binary-field)]
+          [quot1 rem1] (p/quot-rem prod p2 GF2)
+          [quot2 rem2] (p/quot-rem prod p1 GF2)]
       (is (and (= p1 quot1) (empty? rem1)))
       (is (and (= p2 quot2) (empty? rem2)))
       )))
@@ -37,9 +38,10 @@
           p2 [1 1 0 1]
           p1-bits (p/vec-to-bits p1)
           p2-bits (p/vec-to-bits p2)]
-      (is (= (p/mod p1 p2 p/binary-field)
-             (p/bits-to-vec
-              (p/binmod p1-bits p2-bits))
+      (is (= (p/mod p1 p2 GF2)
+             (vec (reverse
+                   (p/bits-to-vec
+                    (p/binmod p1-bits p2-bits))))
              [0 0 1]))
       )))
 
@@ -73,4 +75,4 @@
     (is (= (p/* [1 -1] [0 2 1]) [0 2 -1 -1]))
     (is (= (p/* [12 34 56] [0 1]) [0 12 34 56])))
   (testing "mod2 polynomial multiplication"
-    (is (= (p/* [0 1 1] [1 1 1] p/binary-field) [0 1 0 0 1]))))
+    (is (= (p/* [0 1 1] [1 1 1] GF2) [0 1 0 0 1]))))

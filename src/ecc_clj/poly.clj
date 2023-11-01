@@ -9,30 +9,32 @@
    :* clojure.core/*
    :/ /})
 
-(def binary-field
-  {:unit 1
-   :zero 0
-   :+ bit-xor
-   :- bit-xor
-   :* bit-and
-   :/ bit-and})
-
 (defn bits-to-vec
   "convert int bits into vec.
-  The vector is in little-endian order"
-  [b]
+  The vector is in little-endian order by default"
+  [b & [opts]]
   (loop [n b
          bits '()]
     (if (= 0 n)
-      (vec (reverse bits))
+      (let [opts (or opts {})
+            pad (opts :pad)
+            order (or (opts :order) :little)
+            rev (if (= order :little) reverse identity)]
+        (if (nil? pad) (vec (rev bits))
+            (vec (rev
+                  (concat (repeat (clojure.core/- pad (count bits)) 0)
+                          bits)))))
+      ;;
       (recur (bit-shift-right n 1)
              (conj bits (bit-and n 1))))
     ))
 
 (defn vec-to-bits
   "convert binary vec to int"
-  [v]
-  (let [len (count v)]
+  [v & [order]]
+  (let [len (count v)
+        v (if (= order :big)
+            (vec (reverse v)) v)]
     (loop [i 0
            acc 0]
       (if (>= i len) acc
@@ -66,11 +68,27 @@
               (add acc (mul b (first v)))))
      )))
 
+(defn bits-to-bytes
+  "convert sequence of bits to sequence of bytes"
+  [bits & [order]]
+  (let [order (or order :big)]
+   (loop [bs bits
+          acc []]
+     (if (empty? bs) acc
+         (recur
+          (drop 8 bs)
+          (conj acc
+                (vec-to-bits
+                 (vec (take 8 bs)) :big)))
+         ))))
+
 (defn bin-string [b]
   (Integer/toString b 2))
 
 (defn parse-bin [s]
   (Integer/parseInt s 2))
+
+
 
 (defn mod-invs
   "calculate inverses of 1..p-1 in Z/pZ where p is prime"
