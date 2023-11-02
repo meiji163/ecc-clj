@@ -16,7 +16,7 @@
   the polynomial x represented by 0b10 is primitive."
   2)
 
-(def GF255
+(def GF256
   "GF(255) constructed as GF2[x]/<x^8+x^7+x^2+x+1>"
   (let [GF2-poly (p/parse-bin "110000111")]
     (p/char2-field char2-primitive GF2-poly)))
@@ -140,21 +140,21 @@
   (p/* [1 1 0 0 1] [1 1 1 1 1] GF2))
 
 (def BCH-15-5
-  "(15,5) BCH binary code corrects 3 errors"
+  "(15,5) BCH binary code corrects 5 errors"
   (reduce
    (fn [p1 p2] (p/* p1 p2 GF2))
    [[1 1 0 0 1] [1 1 1 1 1] [1 1 1]]))
 
 (def RS-255-223
-  "(255,223) Reed-Solomon code over GF255 corrects 16 errors.
+  "(255,223) Reed-Solomon code over GF256 corrects 16 errors.
   g(x)=(x-w)(x-w^2)...(x-w^32)
   This is the standard recommended by CCSDS."
-  (let [mul (:* GF255)
-        exp (:exp GF255)
+  (let [mul (:* GF256)
+        exp (:exp GF256)
         prim 2
         roots (for [e (range 1 33)] (exp e))]
     (reduce
-     (fn [p1 p2] (p/* p1 p2 GF255))
+     (fn [p1 p2] (p/* p1 p2 GF256))
      (for [r roots] [r 1]))))
 
 (defn syndromes
@@ -271,6 +271,8 @@
   ;; => [5 2 3 1 6]
   (encode [1 6 3] RS-7-3 GF8)
   ;; => [0 2 2 4 1 6 3]
+  (RS-7-3-decode [0 2 2 4 1 6 3])
+
   (RS-7-3-decode [1 2 2 4 1 7 3])
   ;; => [1 6 3]
   (RS-7-3-decode [0 2 2 4 6 6 6])
@@ -280,7 +282,7 @@
   ;; => [0 1 0 1 1 0 0 0 0 1 0 1 0 1 0]
 
   ;; check 2 is a primitive element
-  (let [mul (:* GF255)]
+  (let [mul (:* GF256)]
     (= (range 1 256)
        (sort (take 255 (iterate #(mul 2 %) 2))))))
 
@@ -296,19 +298,19 @@
           padded (p/shift-right
                   data
                   (- 223 (count data)))]
-      (encode padded RS-255-223 GF255)))
+      (encode padded RS-255-223 GF256)))
 
   (let [err [1 42 1]
         max-errs 5
-        decode-me (p/+ my-encoded-msg err GF255)
-        syns (syndromes decode-me (* 2 max-errs) GF255)]
-    (locate-errors syns decode-me max-errs GF255) ;; => [0 1 2]
-    (decode decode-me max-errs GF255) ;; => {:locations [0 1 2], :sizes [1 42 1]}
+        decode-me (p/+ my-encoded-msg err GF256)
+        syns (syndromes decode-me (* 2 max-errs) GF256)]
+    (locate-errors syns decode-me max-errs GF256) ;; => [0 1 2]
+    (decode decode-me max-errs GF256) ;; => {:locations [0 1 2], :sizes [1 42 1]}
     )
 
   (let [err [0 42 1 0 0 163 0 0 66 0 0 0 0 0 101 100]
         max-errs 8
-        decode-me (p/+ my-encoded-msg err GF255)]
-    (decode decode-me max-errs GF255))
+        decode-me (p/+ my-encoded-msg err GF256)]
+    (decode decode-me max-errs GF256))
   ;; => {:locations [1 2 5 8 14 15], :sizes [42 1 163 66 101 100]}
   )

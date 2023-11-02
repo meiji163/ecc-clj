@@ -12,7 +12,14 @@
            (+ (count v1-fmt-order)
               (count fixed0s)
               (count fixed1s)
-              (count v1-bit-order))))
+              (count v1-bit-order)))))
+  (testing "coordinates don't intersect"
+    (is (empty? (clojure.set/intersection
+                 (set fixed0s) (set fixed1s))))
+    (is (empty? (clojure.set/intersection
+                 (set fixed0s) (set v1-data-order))))
+    (is (empty? (clojure.set/intersection
+                 (set fixed1s) (set v1-data-order))))
     ))
 
 (deftest data-encoding-test

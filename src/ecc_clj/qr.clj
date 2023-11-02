@@ -1,11 +1,12 @@
 (ns ecc-clj.qr
   (:import java.awt.image.BufferedImage
+           java.awt.Color
            javax.imageio.ImageIO
            java.io.File)
   (:require [ecc-clj.poly :as p]
             [ecc-clj.core :as ecc]))
 
-(def GF255
+(def GF256
   "GF(255) constructed as GF2[x]/<x^8+x^4+x^3+x^2+1>"
   (let [GF2-poly (p/parse-bin "100011101")]
     (p/char2-field 2 GF2-poly)))
@@ -14,11 +15,11 @@
 ;; The (27,19) code is shortened from (255,248) code with this polynomial
 ;; w^21 + w^102 x + w^238 x^2 + w^149 x^3 + w^146 x^4 + w^229 x^5 + w^87 x^6 + x^7
 (def RS-255-248
-  "(255,248) Reed-Solomon code over GF255.
+  "(255,248) Reed-Solomon code over GF256.
   g(x)=(x-w^0)(x-w^1)...(x-w^6)"
-  (let [roots (take 7 (:exp GF255))]
+  (let [roots (take 7 (:exp GF256))]
     (reduce
-     (fn [p1 p2] (p/* p1 p2 GF255))
+     (fn [p1 p2] (p/* p1 p2 GF256))
      (for [r roots] [r 1]))))
 
 ;; https://en.wikipedia.org/wiki/QR_code#/media/File:QR_Character_Placement.svg
@@ -167,7 +168,7 @@
                            (p/bits-to-bytes)
                            (reverse))
             check-poly (p/mod (p/shift-right data-poly 7)
-                              RS-255-248 GF255)
+                              RS-255-248 GF256)
             check-bits (->> check-poly
                             (reverse)
                             (map tobits)
@@ -185,8 +186,7 @@
    (fn [i j] (even? (+ i j (mod (* i j) 3))))])
 
 (defn mask-bits
-  "apply one of the QR bitmasks on the bit sequence.
-  The mask codes are 0-7."
+  "apply one of the QR bitmasks on the bit sequence. The mask codes are 0-7."
   [code bits]
   (let [mask? (mask-preds code)
         coord-bits (map vector v1-bit-order bits)]
@@ -202,33 +202,37 @@
 (defn qr-image
   "create 21x21 QR code in BufferedImage given the format bits"
   [fmtbits databits & [scale]]
-  (let [scale (or scale 10)
-        size (* scale (+ 21 2))
-        white java.awt.Color/WHITE
-        black java.awt.Color/BLACK
-        img (BufferedImage. size size BufferedImage/TYPE_INT_RGB)
-        g (.createGraphics img)
+  (if (or (not= 15 (count fmtbits))
+          (not= (* 26 8) (count databits)))
+    (throw (IllegalArgumentException.))
 
-        data-coord-bits (map vector v1-bit-order databits)
-        fmt-coord-bits (map vector v1-fmt-order
-                            (concat fmtbits fmtbits))
-        ;; coords on java image are swapped
-        img-coord (fn [[i j]]
-                    [(* scale (inc j)) (* scale (inc i))])]
+    (let [scale (or scale 10)
+          size (* scale (+ 21 2))
+          white Color/WHITE
+          black Color/BLACK
+          img (BufferedImage. size size BufferedImage/TYPE_INT_RGB)
+          g (.createGraphics img)
 
-    (fill-sqr g size [0 0] white)
-    (doall (for [crd fixed1s]
-             (fill-sqr g scale (img-coord crd) black)))
-    (doall (for [crd fixed0s]
-             (fill-sqr g scale (img-coord crd) white)))
-    (doall (for [[crd b] data-coord-bits]
-             (fill-sqr g scale (img-coord crd)
-                       (if (= 0 b) white black))))
-    (doall (for [[crd b] fmt-coord-bits]
-             (fill-sqr g scale (img-coord crd)
-                       (if (= 0 b) white black))))
-    (.dispose g)
-    img))
+          data-coord-bits (map vector v1-bit-order databits)
+          fmt-coord-bits (map vector v1-fmt-order
+                              (concat fmtbits fmtbits))
+          ;; coords on java image are swapped from QR coords
+          img-coord (fn [[i j]]
+                      [(* scale (inc j)) (* scale (inc i))])]
+
+      (fill-sqr g size [0 0] white)
+      (doall (for [crd fixed1s]
+               (fill-sqr g scale (img-coord crd) black)))
+      (doall (for [crd fixed0s]
+               (fill-sqr g scale (img-coord crd) white)))
+      (doall (for [[crd b] data-coord-bits]
+               (fill-sqr g scale (img-coord crd)
+                         (if (= 0 b) white black))))
+      (doall (for [[crd b] fmt-coord-bits]
+               (fill-sqr g scale (img-coord crd)
+                         (if (= 0 b) white black))))
+      (.dispose g)
+      img)))
 
 (comment
   (let [mask-code 1
