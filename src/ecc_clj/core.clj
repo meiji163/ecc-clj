@@ -13,11 +13,11 @@
 
 (def char2-primitive
   "The polynomial fields are constructed so that
-  the polynomial x represented by 0b10 is primitive."
+  the polynomial x represented by 2 is primitive."
   2)
 
 (def GF256
-  "GF(255) constructed as GF2[x]/<x^8+x^7+x^2+x+1>"
+  "GF(256) constructed as GF2[x]/<x^8+x^7+x^2+x+1>"
   (let [GF2-poly (p/parse-bin "110000111")]
     (p/char2-field char2-primitive GF2-poly)))
 
@@ -73,7 +73,7 @@
   g(x) = (x-w^4)(x-w^5)(x-w^6)(x-w^7), where w=2"
   (reduce
    (fn [p1 p2] (p/* p1 p2 GF8))
-   [[7 1] [3 1] [6 1] [1 1]]))
+   [[7 1] [6 1] [5 1] [1 1]]))
 
 ;;; Small codes can be decoded with a lookup table
 ;;; of error-polynomial remainders
@@ -270,12 +270,12 @@
       (RS-7-5-decode))
   ;; => [5 2 3 1 6]
   (encode [1 6 3] RS-7-3 GF8)
-  ;; => [0 2 2 4 1 6 3]
-  (RS-7-3-decode [0 2 2 4 1 6 3])
-
-  (RS-7-3-decode [1 2 2 4 1 7 3])
+  ;; => [3 3 2 6 1 6 3]
+  (RS-7-3-decode [3 3 2 6 1 6 3])
   ;; => [1 6 3]
-  (RS-7-3-decode [0 2 2 4 6 6 6])
+  (RS-7-3-decode [1 3 2 6 1 7 3])
+  ;; => [1 6 3]
+  (RS-7-3-decode [3 3 2 6 6 6 6])
   ;; => [1 6 3]
 
   (encode [0 1 0 1 0 1 0] BCH-15-7 GF2)

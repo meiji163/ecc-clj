@@ -7,7 +7,7 @@
             [ecc-clj.core :as ecc]))
 
 (def GF256
-  "GF(255) constructed as GF2[x]/<x^8+x^4+x^3+x^2+1>"
+  "GF(256) constructed as GF2[x]/<x^8+x^4+x^3+x^2+1>"
   (let [GF2-poly (p/parse-bin "100011101")]
     (p/char2-field 2 GF2-poly)))
 
@@ -236,11 +236,10 @@
 
 (comment
   (let [mask-code 1
-        databits (->> "github.com/github"
-                      (map int)
-                      (encode-bytes)
-                      (mask-bits mask-code))
-        fmtbits (fmt-bits mask-code)
-        myimg (qr-image fmtbits databits)]
-    (ImageIO/write myimg "PNG" (File. "test.png")))
-  )
+      databits (->> "github.com/github"
+                    (map int)
+                    (encode-bytes)
+                    (mask-bits mask-code))
+      fmtbits (fmt-bits mask-code)
+      myimg (qr-image fmtbits databits)]
+  (ImageIO/write myimg "PNG" (File. "test.png")))
