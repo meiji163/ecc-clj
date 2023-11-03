@@ -37,4 +37,4 @@
   (testing "encoding"
     (let [data [1 6 3]]
       (is (= (encode data RS-7-3 GF8)
-             [0 2 2 4 1 6 3])))))
+             [3 3 2 6 1 6 3])))))

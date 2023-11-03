@@ -17,9 +17,9 @@
     (is (empty? (clojure.set/intersection
                  (set fixed0s) (set fixed1s))))
     (is (empty? (clojure.set/intersection
-                 (set fixed0s) (set v1-data-order))))
+                 (set fixed0s) (set v1-bit-order))))
     (is (empty? (clojure.set/intersection
-                 (set fixed1s) (set v1-data-order))))
+                 (set fixed1s) (set v1-bit-order))))
     ))
 
 (deftest data-encoding-test

@@ -236,10 +236,10 @@
 
 (comment
   (let [mask-code 1
-      databits (->> "github.com/github"
+        databits (->> "github.com/github"
                     (map int)
                     (encode-bytes)
                     (mask-bits mask-code))
-      fmtbits (fmt-bits mask-code)
-      myimg (qr-image fmtbits databits)]
-  (ImageIO/write myimg "PNG" (File. "test.png")))
+        fmtbits (fmt-bits mask-code)
+        myimg (qr-image fmtbits databits)]
+  (ImageIO/write myimg "PNG" (File. "test.png"))))

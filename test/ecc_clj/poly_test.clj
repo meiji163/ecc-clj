@@ -39,9 +39,8 @@
           p1-bits (p/vec-to-bits p1)
           p2-bits (p/vec-to-bits p2)]
       (is (= (p/mod p1 p2 GF2)
-             (vec (reverse
-                   (p/bits-to-vec
-                    (p/binmod p1-bits p2-bits))))
+             (p/bits-to-vec
+              (p/binmod p1-bits p2-bits))
              [0 0 1]))
       )))
 
