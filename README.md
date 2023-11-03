@@ -10,22 +10,8 @@ The associated blogpost is here: https://meiji163.github.io/post/ecc/
 ``` clojure
 (require '[ecc-clj.poly :as p])
 (require '[ecc-clj.core :as ecc])
-
-;; create a Galois field
-(def GF256
-  "GF(255) constructed as GF2[x]/<x^8+x^4+x^3+x^2+1>"
-  (let [GF2-poly (p/parse-bin "100011101")]
-    (p/char2-field 2 GF2-poly)))
-
-;; create a Reed-Solomon code generating polynomial
-(def RS-255-248
-  "(255,248) Reed-Solomon code over GF256"
-  (let [roots (take 7 (:exp GF256))]
-    (reduce
-     (fn [p1 p2] (p/* p1 p2 GF256))
-     (for [r roots] [r 1]))))
-     
-;; encode a message
+    
+;; encode a message with (255,233) Reed-Solomon code
 (def my-encoded-msg
   (let [message
         (str
@@ -37,15 +23,30 @@ The associated blogpost is here: https://meiji163.github.io/post/ecc/
         padded (p/shift-right
                 data
                 (- 223 (count data)))]
-    (ecc/encode padded RS-255-223 GF256)))
+    (ecc/encode padded ecc/RS-255-223 ecc/GF256)))
 
-;; decode with errors
+;; correct message with errors
 (let [err [0 42 1 0 0 163 0 0 66 0 0 0 0 0 101 100]
       max-errs 8
-      decode-me (p/+ my-encoded-msg err GF256)]
-  (ecc/decode decode-me max-errs GF256))
+      decode-me (p/+ my-encoded-msg err ecc/GF256)]
+  (ecc/decode decode-me max-errs ecc/GF256))
 ;; => {:locations [1 2 5 8 14 15], 
 ;;     :sizes [42 1 163 66 101 100]}
+
+
+;; create a QR code
+(import java.io.File)
+(import java.imageio.ImageIO)
+(require '[ecc-clj.qr :as qr])
+
+(let [mask-code 1
+      databits (->> "github.com/github"
+                  (map int)
+                  (qr/encode-bytes)
+                  (qr/mask-bits mask-code))
+      fmtbits (qr/fmt-bits mask-code)
+      myimg (qr/qr-image fmtbits databits)]
+(ImageIO/write myimg "PNG" (File. "test.png")))
 ```
 
 ## Test
